@@ -7,6 +7,7 @@ import * as RadioGroup from "~/components/ui/radio-group";
 import { PropagateLoader } from "react-spinners";
 import toast from "react-hot-toast";
 import { RadioGroup as RadioGroupArk } from "@ark-ui/react/radio-group";
+import { processFile } from "~/lib/apiService";
 
 export const ProgressPage = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,33 +29,15 @@ export const ProgressPage = () => {
     event.preventDefault();
     const process = (event.target as HTMLFormElement).process.value as string;
 
-    // TODO: 途中で終了してもダイアログを閉じる
     setIsOpen(true);
-
-    const result = await fetch(`${window.location.origin}/process`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        filename: param.filename,
-        process,
-      }),
-    });
-
-    setIsOpen(false);
-
-    if (!result.ok) {
+    try {
+      const { filename, url } = await processFile(param.filename, process);
+      navigate({ to: "/download", search: { filename, url } });
+    } catch (error) {
       toast.error("加工に失敗しました");
-      return;
+    } finally {
+      setIsOpen(false);
     }
-
-    const { filename, url } = (await result.json()) as {
-      filename: string;
-      url: string;
-    };
-
-    navigate({ to: "/download", search: { filename, url } });
   };
 
   return (

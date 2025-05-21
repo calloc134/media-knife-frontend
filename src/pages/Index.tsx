@@ -8,6 +8,8 @@ import { Button } from "~/components/ui/button";
 import toast from "react-hot-toast";
 import * as Dialog from "~/components/ui/dialog";
 import { PropagateLoader } from "react-spinners";
+import { uploadFile, downloadFromUrl } from "~/lib/apiService";
+import { isValidUrl } from "~/lib/utils";
 
 export const IndexPage = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,31 +20,20 @@ export const IndexPage = () => {
       const file = acceptedFiles[0];
 
       if (file) {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        // TODO: 途中で終了してもダイアログを閉じる
         setIsOpen(true);
-        const result = await fetch(`${window.location.origin}/upload`, {
-          method: "POST",
-          body: formData,
-        });
-
-        setIsOpen(false);
-
-        if (!result.ok) {
+        try {
+          const { filename } = await uploadFile(file);
+          navigate({
+            to: "/progress",
+            search: {
+              filename,
+            },
+          });
+        } catch (error) {
           toast.error("アップロードに失敗しました");
-          return;
+        } finally {
+          setIsOpen(false);
         }
-
-        const { filename } = await result.json();
-
-        navigate({
-          to: "/progress",
-          search: {
-            filename,
-          },
-        });
       }
     },
     [navigate]
@@ -53,42 +44,25 @@ export const IndexPage = () => {
       event.preventDefault();
       const url = (event.target as HTMLFormElement).url.value as string;
 
-      const urlPattern = new RegExp(
-        /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s/$.?#].[^\s]*$/
-      );
-
-      if (!urlPattern.test(url)) {
+      if (!isValidUrl(url)) {
         toast.error("URLが不正です");
         return;
       }
 
-      // TODO: 途中で終了してもダイアログを閉じる
       setIsOpen(true);
-      const result = await fetch(`${window.location.origin}/yt-dlp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url,
-        }),
-      });
-
-      setIsOpen(false);
-
-      if (!result.ok) {
+      try {
+        const { filename } = await downloadFromUrl(url);
+        navigate({
+          to: "/progress",
+          search: {
+            filename,
+          },
+        });
+      } catch (error) {
         toast.error("ダウンロードに失敗しました");
-        return;
+      } finally {
+        setIsOpen(false);
       }
-
-      const { filename } = await result.json();
-
-      navigate({
-        to: "/progress",
-        search: {
-          filename,
-        },
-      });
     },
     [navigate]
   );
